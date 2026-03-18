@@ -100,4 +100,4 @@ A dedicated, thread-safe `@MainActor NotificationManager` singleton handles all 
 
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/k1ran-k/Aura.git](https://github.com/k1ran-k/Aura.git)
+   git clone [https://github.com/k1rank94/Aura.git](https://github.com/k1rank94/Aura.git)
