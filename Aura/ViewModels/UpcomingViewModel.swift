@@ -33,7 +33,7 @@ class UpcomingViewModel {
         
         return (1...14).compactMap { dayOffset in
             calendar.date(byAdding: .day, value: dayOffset, to: today)
-        }
+        } 
     }
     
     /// Filters a general list of tasks, returning only those scheduled on the `selectedDate`.
