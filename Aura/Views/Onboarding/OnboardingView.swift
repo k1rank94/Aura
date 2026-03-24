@@ -8,16 +8,29 @@
 import SwiftUI
 
 // MARK: - Onboarding Data Model
+
+/// A data model representing a single page within the onboarding flow.
 struct OnboardingPage: Identifiable {
+    /// A unique identifier for the page.
     let id = UUID()
+    /// The name of the image asset to display.
     let imageName: String
+    /// The primary headline of the page.
     let title: String
+    /// The secondary descriptive text of the page.
     let subtitle: String
 }
 
 // MARK: - Onboarding View
+
+/// A paginated view that introduces new users to the core features of the application.
+///
+/// `OnboardingView` utilizes a `TabView` with a page-based style to allow users to swipe through
+/// introductory content. It integrates heavily with `HapticManager` to provide tactile feedback
+/// during transitions and upon completion.
 struct OnboardingView: View {
     
+    /// The static data representing the sequence of onboarding screens.
     private let pages: [OnboardingPage] = [
         OnboardingPage(
             imageName: "bg_onboarding_page_1",
@@ -31,11 +44,15 @@ struct OnboardingView: View {
         )
     ]
     
+    /// The index of the currently visible onboarding page.
     @State private var currentPage = 0
+    
+    /// A closure executed when the user completes the final step of the onboarding flow.
     var onFinished: () -> Void
     
     var body: some View {
         VStack {
+            
             // Paging View
             TabView(selection: $currentPage) {
                 ForEach(0..<pages.count, id: \.self) { index in
@@ -73,6 +90,7 @@ struct OnboardingView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: currentPage)
+            
             // Trigger selection haptic when the user swipes between pages
             .onChange(of: currentPage) { _ in
                 HapticManager.shared.selection()
@@ -82,7 +100,7 @@ struct OnboardingView: View {
             HStack(spacing: 8) {
                 ForEach(0..<pages.count, id: \.self) { index in
                     Circle()
-                        // Using the app's accent color (which you already set) for the active dot
+                        // Using the app's accent color for the active dot
                         .fill(currentPage == index ? Color.accentColor : Color.gray.opacity(0.3))
                         .frame(width: 8, height: 8)
                 }
@@ -109,7 +127,6 @@ struct OnboardingView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    // Uses your set accent color
                     .background(Color.accentColor)
                     .cornerRadius(16)
                     // Adds a subtle matching glow/shadow from your design

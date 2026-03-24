@@ -85,12 +85,12 @@ struct UpcomingView: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         
-        // 3. The Tap Gesture
+        // Open the editing sheet on tap
         .onTapGesture {
             taskToEdit = task
         }
         
-        // Swipe to Delete
+        // Destructive swipe action for permanent deletion
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 withAnimation {

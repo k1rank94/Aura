@@ -41,14 +41,14 @@ class AddTaskViewModel {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if let existingTask = taskToEdit {
-            // SwiftData auto-saves these changes immediately!
+            // SwiftData auto-saves property changes applied to active models.
             existingTask.title = cleanTitle
             existingTask.dueDate = dueDate
             existingTask.priority = priority
             existingTask.tag = tag
             return nil
         } else {
-            // Return a brand new task
+            // Generate and return a new task so the parent view can insert it into the context.
             return TaskItem(
                 title: cleanTitle,
                 isCompleted: false,

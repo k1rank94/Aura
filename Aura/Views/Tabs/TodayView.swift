@@ -5,38 +5,48 @@
 //  Created by Kiran on 16/03/26.
 //
 
-
 import SwiftUI
 import SwiftData
 
-import SwiftUI
-import SwiftData
-
+/// A primary view that displays tasks scheduled for the current day.
+///
+/// `TodayView` acts as a daily dashboard for the user. It integrates the `TodayViewModel`
+/// to split tasks into "Morning" and "Afternoon" sections and utilizes a `ProgressRingView`
+/// to show a live progress tracker of their daily goals.
 struct TodayView: View {
+    
+    // MARK: - Environment & State
+    
+    /// The SwiftData model context used for deletions.
     @Environment(\.modelContext) private var context
     
+    /// The view model that manages task filtering and progress calculation.
     @State private var viewModel = TodayViewModel()
+    
+    /// All tasks stored in SwiftData, retrieved dynamically.
     @Query(sort: \TaskItem.createdAt, order: .forward) private var todayTasks: [TaskItem]
     
-    // State to hold the task the user wants to edit
+    /// The task currently selected by the user for editing.
     @State private var taskToEdit: TaskItem?
+    
+    // MARK: - Body
     
     var body: some View {
         List {
             
-            // 1. Header
+            // Dynamic Header Section
             headerSection
                 .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             
-            // 2. Goal Card
+            // Goal Tracking Card
             dailyGoalCard(tasks: todayTasks)
                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 24, trailing: 20))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             
-            // 3. Flattened Morning Section
+            // Flattened Morning Section
             let morning = viewModel.morningTasks(from: todayTasks)
             if !morning.isEmpty {
                 Text("MORNING")
@@ -54,7 +64,7 @@ struct TodayView: View {
                 }
             }
             
-            // 4. Flattened Afternoon Section
+            // Flattened Afternoon Section
             let afternoon = viewModel.afternoonTasks(from: todayTasks)
             if !afternoon.isEmpty {
                 Text("AFTERNOON")
@@ -72,7 +82,7 @@ struct TodayView: View {
                 }
             }
             
-            // 5. Empty State
+            // Empty State
             if todayTasks.isEmpty {
                 emptyStateView
                     .listRowInsets(EdgeInsets(top: 40, leading: 20, bottom: 40, trailing: 20))
@@ -80,7 +90,7 @@ struct TodayView: View {
                     .listRowSeparator(.hidden)
             }
             
-            // Extra padding at the bottom so the FAB doesn't cover the last task
+            // Bottom buffer to prevent content from being hidden behind the FAB
             Spacer()
                 .frame(height: 100)
                 .listRowBackground(Color.clear)
@@ -95,8 +105,8 @@ struct TodayView: View {
         // Binds to taskToEdit. When a task is tapped, this sheet opens.
         .sheet(item: $taskToEdit) { task in
             AddTaskSheet(task: task) { _ in
-                // SwiftData automatically saves the changes in the background.
-                // We just need to reschedule the notification in case they changed the time.
+                // SwiftData automatically saves changes via the context.
+                // We ensure system notifications are rescheduled to reflect newly set times.
                 NotificationManager.shared.scheduleNotification(for: task)
             }
             .presentationDetents([.height(350)])
@@ -107,6 +117,10 @@ struct TodayView: View {
     
     // MARK: - Subviews
     
+    /// Generates a customized list row for an individual task.
+    ///
+    /// - Parameter task: The `TaskItem` to represent in the UI.
+    /// - Returns: A styled view equipped with interaction gestures.
     @ViewBuilder
     private func taskRow(for task: TaskItem) -> some View {
         TaskRowView(task: task) {
@@ -120,12 +134,12 @@ struct TodayView: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         
-        // 1. Tapping opens the edit sheet!
+        // Present the task detail sheet when the row is tapped
         .onTapGesture {
             taskToEdit = task
         }
         
-        // 2. Swiping deletes the task!
+        // Destructive swipe action for task deletion
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 withAnimation {
@@ -138,6 +152,7 @@ struct TodayView: View {
         }
     }
     
+    /// The static header section displaying the view's title.
     private var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -157,6 +172,10 @@ struct TodayView: View {
         .padding(.top, 20)
     }
     
+    /// A dashboard card summarizing the user's progress for the day.
+    ///
+    /// - Parameter tasks: The collection of tasks currently displayed on the view.
+    /// - Returns: A visual container integrating text and a custom `ProgressRingView`.
     private func dailyGoalCard(tasks: [TaskItem]) -> some View {
         HStack(spacing: 16) {
             ProgressRingView(progress: viewModel.calculateProgress(for: tasks))
@@ -180,6 +199,7 @@ struct TodayView: View {
         .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
     }
     
+    /// A placeholder view shown when no tasks are currently assigned to "Today."
     private var emptyStateView: some View {
         VStack {
             Spacer().frame(height: 60)
