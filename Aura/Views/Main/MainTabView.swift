@@ -26,6 +26,15 @@ struct MainTabView: View {
     /// A boolean flag determining whether the global task creation sheet is currently visible.
     @State private var isShowingAddTask = false
     
+    // The version the user last launched. Defaults to empty so fresh installs see it immediately.
+    @AppStorage("lastLaunchedVersion") private var lastLaunchedVersion: String = ""
+    
+    // Controls the presentation of the What's New sheet
+    @State private var isShowingWhatsNew = false
+    
+    // Extract the current app version directly from Xcode's Build settings
+    private let currentAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    
     // MARK: - User Preferences
     
     /// Tracks whether the morning briefing is enabled. Defaults to `true`.
@@ -98,10 +107,17 @@ struct MainTabView: View {
         .onAppear {
             // Synchronize the NotificationManager with the user's stored preferences upon app launch.
             // This is crucial for the very first time the user opens the app, as the default `true`
-            // values from `@AppStorage` need to be explicitly passed to the notification engine 
+            // values from `@AppStorage` need to be explicitly passed to the notification engine
             // to schedule the briefings.
             NotificationManager.shared.updateMorningBriefing(isEnabled: isMorningBriefingEnabled)
             NotificationManager.shared.updateEveningBriefing(isEnabled: isEveningBriefingEnabled)
+            
+            if lastLaunchedVersion != currentAppVersion {
+                // Add a tiny delay so the UI finishes loading before popping the modal
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    isShowingWhatsNew = true
+                }
+            }
         }
         
         // 3. The Global Creation Sheet
@@ -122,6 +138,18 @@ struct MainTabView: View {
             .presentationDetents([.height(350)])
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(32)
+        }
+        
+        // What's New Presentation
+        .sheet(isPresented: $isShowingWhatsNew, onDismiss: {
+            // Once they dismiss it, save the new version so they don't see it again until the next update!
+            lastLaunchedVersion = currentAppVersion
+        }) {
+            WhatsNewView(items: [
+                WhatsNewItem(icon: "moon.stars.fill", title: "Dark Mode", description: "Aura now beautifully adapts to your system's dark mode settings for late-night planning.", color: .indigo),
+                WhatsNewItem(icon: "repeat", title: "Recurring Tasks", description: "Automate your workflow. Set tasks to repeat daily, weekly, or monthly.", color: .pink),
+                WhatsNewItem(icon: "bell.badge.fill", title: "Daily Nudges", description: "Start your morning right and wind down easily with automated daily briefing notifications.", color: .orange)
+            ])
         }
     }
 }
