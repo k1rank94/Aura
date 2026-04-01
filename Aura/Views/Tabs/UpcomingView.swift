@@ -5,7 +5,6 @@
 //  Created by Kiran on 16/03/26.
 //
 
-
 import SwiftUI
 import SwiftData
 
@@ -19,13 +18,10 @@ struct UpcomingView: View {
         order: .forward
     ) private var scheduledTasks: [TaskItem]
     
-    // 1. State for Editing
     @State private var taskToEdit: TaskItem?
     
     var body: some View {
         VStack(spacing: 0) {
-            
-            // Pinned Headers
             headerSection
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
@@ -35,7 +31,6 @@ struct UpcomingView: View {
                 .padding(.bottom, 16)
                 .background(Color(UIColor.systemGroupedBackground))
             
-            // Scrolling List
             List {
                 let filteredTasks = viewModel.tasksForSelectedDate(from: scheduledTasks)
                 
@@ -56,8 +51,6 @@ struct UpcomingView: View {
             .listStyle(.plain)
             .background(Color(UIColor.systemGroupedBackground))
             .scrollIndicators(.hidden)
-            
-            // 2. The Edit Sheet
             .sheet(item: $taskToEdit) { task in
                 AddTaskSheet(task: task) { _ in
                     NotificationManager.shared.scheduleNotification(for: task)
@@ -70,27 +63,29 @@ struct UpcomingView: View {
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
     }
     
-    // MARK: - Subviews
-    
     @ViewBuilder
     private func taskRow(for task: TaskItem) -> some View {
         TaskRowView(task: task) {
+            let isBecomingCompleted = !task.isCompleted
             viewModel.toggleTaskCompletion(task)
+            
+            if isBecomingCompleted, let newTask = task.generateNextOccurrence() {
+                context.insert(newTask)
+                NotificationManager.shared.scheduleNotification(for: newTask)
+            }
         }
-        .padding()
-        .background(Color.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        // DARK MODE FIX
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 3)
         .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        
-        // Open the editing sheet on tap
         .onTapGesture {
             taskToEdit = task
         }
-        
-        // Destructive swipe action for permanent deletion
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 withAnimation {
@@ -115,7 +110,8 @@ struct UpcomingView: View {
                 Text("Upcoming")
                     .font(.largeTitle)
                     .fontWeight(.black)
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.2))
+                    // DARK MODE FIX
+                    .foregroundColor(.primary)
             }
             Spacer()
         }
@@ -142,11 +138,13 @@ struct UpcomingView: View {
                             Text(viewModel.dayOfMonth(for: date))
                                 .font(.title3)
                                 .fontWeight(.bold)
-                                .foregroundColor(isSelected ? .white : Color(red: 0.1, green: 0.1, blue: 0.2))
+                                // DARK MODE FIX
+                                .foregroundColor(isSelected ? .white : .primary)
                         }
                         .padding(.vertical, 12)
                         .padding(.horizontal, 16)
-                        .background(isSelected ? Color.pink : Color.white)
+                        // DARK MODE FIX
+                        .background(isSelected ? Color.pink : Color(UIColor.secondarySystemGroupedBackground))
                         .cornerRadius(16)
                         .shadow(color: isSelected ? Color.pink.opacity(0.3) : Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
                     }

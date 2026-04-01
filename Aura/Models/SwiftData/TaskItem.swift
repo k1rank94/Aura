@@ -20,12 +20,23 @@ enum Priority: Int, Codable, CaseIterable {
     case high = 2
 }
 
+// MARK: - Recurrence (NEW)
+
+/// An enumeration defining the frequency at which a task should repeat.
+///
+/// Backed by a `String` so it can be easily displayed in the UI (e.g., "Daily", "Weekly").
+enum RecurrenceRule: String, Codable, CaseIterable {
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case monthly = "Monthly"
+}
+
 // MARK: - Data Model
 
 /// The core data model representing an individual task within the Aura application.
 ///
 /// `TaskItem` is a SwiftData `@Model` that encapsulates all the details of a task,
-/// including its schedule, categorization, and completion status.
+/// including its schedule, categorization, completion status, and recurrence rules.
 @Model
 final class TaskItem {
     
@@ -42,7 +53,7 @@ final class TaskItem {
     ///
     /// If `dueDate` is `nil`, the task is considered unscheduled and defaults to the Inbox.
     /// If a date is provided, the task will appear in views like "Today" or "Upcoming."
-    var dueDate: Date? 
+    var dueDate: Date?
     
     /// The importance level of the task.
     var priority: Priority
@@ -53,16 +64,16 @@ final class TaskItem {
     /// An optional custom string used to visually categorize the task (e.g., "Work", "Health").
     var tag: String?
     
-    /// Initializes a new task with the provided configuration.
+    // MARK: - New Migration Properties
+    
+    /// An optional rule defining if and how the task should repeat.
     ///
-    /// - Parameters:
-    ///   - id: A unique identifier. Defaults to a new `UUID`.
-    ///   - title: The name of the task. Defaults to an empty string.
-    ///   - isCompleted: The initial completion state. Defaults to `false`.
-    ///   - dueDate: An optional target completion date. Defaults to `nil`.
-    ///   - priority: The initial importance level. Defaults to `.low`.
-    ///   - createdAt: The timestamp of creation. Defaults to the current date/time.
-    ///   - tag: An optional categorization label. Defaults to `nil`.
+    /// **Migration Note:** This is marked as optional (`?`) so that existing users upgrading
+    /// to this version will seamlessly receive `nil` (no recurrence) for their existing tasks
+    /// without crashing the local SwiftData store.
+    var recurrence: RecurrenceRule?
+    
+    /// Initializes a new task with the provided configuration.
     init(
         id: UUID = UUID(),
         title: String = "",
@@ -70,7 +81,8 @@ final class TaskItem {
         dueDate: Date? = nil,
         priority: Priority = .low,
         createdAt: Date = .now,
-        tag: String? = nil
+        tag: String? = nil,
+        recurrence: RecurrenceRule? = nil // Added to initializer safely
     ) {
         self.id = id
         self.title = title
@@ -79,5 +91,6 @@ final class TaskItem {
         self.priority = priority
         self.createdAt = createdAt
         self.tag = tag
+        self.recurrence = recurrence
     }
 }

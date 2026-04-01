@@ -15,6 +15,9 @@ class AddTaskViewModel {
     var priority: Priority = .low
     var tag: String? = nil
     
+    // NEW: Add recurrence state
+    var recurrence: RecurrenceRule? = nil
+    
     // Hold onto the existing task if we are editing
     var taskToEdit: TaskItem?
     
@@ -30,6 +33,8 @@ class AddTaskViewModel {
             self.dueDate = task.dueDate
             self.priority = task.priority
             self.tag = task.tag
+            // NEW: Load existing recurrence rule if editing
+            self.recurrence = task.recurrence
         }
     }
     
@@ -46,6 +51,8 @@ class AddTaskViewModel {
             existingTask.dueDate = dueDate
             existingTask.priority = priority
             existingTask.tag = tag
+            // NEW: Update the recurrence rule
+            existingTask.recurrence = recurrence
             return nil
         } else {
             // Generate and return a new task so the parent view can insert it into the context.
@@ -54,7 +61,8 @@ class AddTaskViewModel {
                 isCompleted: false,
                 dueDate: dueDate,
                 priority: priority,
-                tag: tag
+                tag: tag,
+                recurrence: recurrence // NEW: Inject the recurrence rule on creation
             )
         }
     }
