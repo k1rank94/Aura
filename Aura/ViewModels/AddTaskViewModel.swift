@@ -18,6 +18,9 @@ class AddTaskViewModel {
     // NEW: Add recurrence state
     var recurrence: RecurrenceRule? = nil
     
+    // Support assigning to a list
+    var list: TaskList? = nil
+
     // Hold onto the existing task if we are editing
     var taskToEdit: TaskItem?
     
@@ -35,6 +38,7 @@ class AddTaskViewModel {
             self.tag = task.tag
             // NEW: Load existing recurrence rule if editing
             self.recurrence = task.recurrence
+            self.list = task.list
         }
     }
     
@@ -53,6 +57,7 @@ class AddTaskViewModel {
             existingTask.tag = tag
             // NEW: Update the recurrence rule
             existingTask.recurrence = recurrence
+            existingTask.list = list
             return nil
         } else {
             // Generate and return a new task so the parent view can insert it into the context.
@@ -62,7 +67,8 @@ class AddTaskViewModel {
                 dueDate: dueDate,
                 priority: priority,
                 tag: tag,
-                recurrence: recurrence // NEW: Inject the recurrence rule on creation
+                recurrence: recurrence, // NEW: Inject the recurrence rule on creation
+                list: list
             )
         }
     }

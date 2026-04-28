@@ -43,7 +43,8 @@ extension TaskItem {
             dueDate: nextDate,      // The newly calculated future date
             priority: self.priority,
             tag: self.tag,
-            recurrence: self.recurrence // Carry over the repeating rule!
+            recurrence: self.recurrence, // Carry over the repeating rule!
+            list: self.list // Carry over list
         )
     }
 }

@@ -6,11 +6,15 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: AddTaskViewModel
     
+    @Environment(\.modelContext) private var context
+    @Query(sort: \TaskList.title, order: .forward) private var allLists: [TaskList]
+
     @State private var showingCustomTagAlert = false
     @State private var customTagText = ""
     
@@ -71,6 +75,22 @@ struct AddTaskSheet: View {
                         )
                     }
                     
+                    Menu {
+                        Button("Inbox (No List)") { viewModel.list = nil }
+
+                        Divider()
+
+                        ForEach(allLists) { list in
+                            Button(list.title) { viewModel.list = list }
+                        }
+                    } label: {
+                        actionPill(
+                            icon: "list.bullet",
+                            title: viewModel.list?.title ?? "List",
+                            isActive: viewModel.list != nil
+                        )
+                    }
+
                     Menu {
                         ForEach(availableTags, id: \.self) { tag in
                             Button(tag) { viewModel.tag = tag }

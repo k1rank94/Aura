@@ -72,18 +72,24 @@ struct MainTabView: View {
                     }
                     .tag(2)
                 
+                SpacesView()
+                    .tabItem {
+                        Label("Spaces", systemImage: "folder")
+                    }
+                    .tag(3)
+
                 SearchView()
                     .tabItem {
                         Label("Search", systemImage: "magnifyingglass")
                     }
-                    .tag(3)
+                    .tag(4)
                 
                 // NEW: The Settings Router
                 SettingsView()
                     .tabItem {
                         Label("Settings", systemImage: "gearshape")
                     }
-                    .tag(4)
+                    .tag(5)
             }
             .tint(.pink)
             

@@ -73,6 +73,9 @@ final class TaskItem {
     /// without crashing the local SwiftData store.
     var recurrence: RecurrenceRule?
     
+    /// An optional list this task belongs to.
+    var list: TaskList?
+
     /// Initializes a new task with the provided configuration.
     init(
         id: UUID = UUID(),
@@ -82,7 +85,8 @@ final class TaskItem {
         priority: Priority = .low,
         createdAt: Date = .now,
         tag: String? = nil,
-        recurrence: RecurrenceRule? = nil // Added to initializer safely
+        recurrence: RecurrenceRule? = nil, // Added to initializer safely
+        list: TaskList? = nil
     ) {
         self.id = id
         self.title = title
@@ -92,5 +96,6 @@ final class TaskItem {
         self.createdAt = createdAt
         self.tag = tag
         self.recurrence = recurrence
+        self.list = list
     }
 }
