@@ -2,98 +2,111 @@
 //  SpacesView.swift
 //  Aura
 //
-//  Created by Jules.
-//
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct SpacesView: View {
     @Environment(\.modelContext) private var context
-    @Query(sort: \TaskSpace.createdAt, order: .forward) private var spaces: [TaskSpace]
+    @Query(sort: \TaskSpace.createdAt) private var spaces: [TaskSpace]
 
-    @State private var showingAddSpace = false
+    @State private var isAddingSpace = false
     @State private var newSpaceTitle = ""
 
     var body: some View {
-        NavigationStack {
-            List {
-                headerSection
-                    .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+        ZStack {
+            AuraAmbientBackground()
 
-                ForEach(spaces) { space in
-                    NavigationLink(destination: ListsView(space: space)) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(space.title)
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Text("\(space.lists.count) lists")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+            ScrollView {
+                LazyVStack(spacing: AuraSpace.sm) {
+                    AuraSectionHeading("Spaces", eyebrow: "Life, organized", trailing: "\(spaces.count)")
+
+                    if spaces.isEmpty {
+                        AuraEmptyState(
+                            icon: "square.stack.3d.up",
+                            title: "Create some breathing room",
+                            message: "Spaces keep work, personal life, and bigger goals separate."
+                        )
+                    } else {
+                        ForEach(spaces) { space in
+                            NavigationLink {
+                                ListsView(space: space)
+                            } label: {
+                                SpaceRow(space: space)
                             }
-                            Spacer()
-                        }
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(16)
-                    }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            withAnimation {
-                                context.delete(space)
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    context.delete(space)
+                                }
                             }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
                         }
                     }
                 }
+                .padding(AuraSpace.lg)
             }
-            .listStyle(.plain)
-            .background(Color(UIColor.systemGroupedBackground))
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddSpace = true }) {
-                        Image(systemName: "plus")
-                    }
+        }
+        .navigationTitle("Spaces")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isAddingSpace = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .alert("New Space", isPresented: $showingAddSpace) {
-                TextField("Space Name", text: $newSpaceTitle)
-                Button("Cancel", role: .cancel) { newSpaceTitle = "" }
-                Button("Add") {
-                    let space = TaskSpace(title: newSpaceTitle)
-                    context.insert(space)
-                    newSpaceTitle = ""
-                }
-            } message: {
-                Text("Enter a name for the new space.")
-            }
+        }
+        .tint(AuraColor.orchid)
+        .alert("New space", isPresented: $isAddingSpace) {
+            TextField("Work, Personal, Launch…", text: $newSpaceTitle)
+            Button("Cancel", role: .cancel) { newSpaceTitle = "" }
+            Button("Create", action: createSpace)
+                .disabled(newSpaceTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } message: {
+            Text("A space can contain several focused lists.")
         }
     }
 
-    private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ORGANIZATION")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.blue)
-                    .kerning(1.2)
+    private func createSpace() {
+        let title = newSpaceTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        context.insert(TaskSpace(title: title))
+        newSpaceTitle = ""
+        HapticManager.shared.notification(type: .success)
+    }
+}
 
-                Text("Spaces")
-                    .font(.largeTitle)
-                    .fontWeight(.black)
-                    .foregroundColor(.primary)
+private struct SpaceRow: View {
+    let space: TaskSpace
+
+    private var openTaskCount: Int {
+        space.lists.flatMap(\.tasks).filter { !$0.isCompleted }.count
+    }
+
+    var body: some View {
+        HStack(spacing: AuraSpace.md) {
+            Image(systemName: "square.stack.3d.up.fill")
+                .font(.title3)
+                .foregroundStyle(AuraColor.calmGradient)
+                .frame(width: 50, height: 50)
+                .background(AuraColor.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(space.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("\(space.lists.count) lists · \(openTaskCount) open")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+
             Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
         }
-        .padding(.top, 20)
+        .padding(AuraSpace.md)
+        .auraCard(cornerRadius: 20)
     }
 }

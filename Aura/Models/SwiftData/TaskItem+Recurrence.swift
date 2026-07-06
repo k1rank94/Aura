@@ -44,7 +44,10 @@ extension TaskItem {
             priority: self.priority,
             tag: self.tag,
             recurrence: self.recurrence, // Carry over the repeating rule!
-            list: self.list // Carry over list
+            list: self.list, // Carry over list
+            notes: self.notes,
+            estimatedMinutes: self.estimatedMinutes,
+            sortOrder: self.sortOrder
         )
     }
 }

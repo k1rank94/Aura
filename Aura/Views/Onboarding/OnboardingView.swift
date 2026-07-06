@@ -2,144 +2,172 @@
 //  OnboardingView.swift
 //  Aura
 //
-//  Created by Kiran on 13/03/26.
-//
 
 import SwiftUI
 
-// MARK: - Onboarding Data Model
-
-/// A data model representing a single page within the onboarding flow.
-struct OnboardingPage: Identifiable {
-    /// A unique identifier for the page.
-    let id = UUID()
-    /// The name of the image asset to display.
-    let imageName: String
-    /// The primary headline of the page.
-    let title: String
-    /// The secondary descriptive text of the page.
-    let subtitle: String
-}
-
-// MARK: - Onboarding View
-
-/// A paginated view that introduces new users to the core features of the application.
-///
-/// `OnboardingView` utilizes a `TabView` with a page-based style to allow users to swipe through
-/// introductory content. It integrates heavily with `HapticManager` to provide tactile feedback
-/// during transitions and upon completion.
 struct OnboardingView: View {
-    
-    /// The static data representing the sequence of onboarding screens.
-    private let pages: [OnboardingPage] = [
+    let onFinished: () -> Void
+
+    @State private var currentPage = 0
+
+    private let pages = [
         OnboardingPage(
-            imageName: "bg_onboarding_page_1",
-            title: "Simplify Your Day",
-            subtitle: "Organize your tasks and clear your\nmind."
+            eyebrow: "WELCOME TO AURA",
+            title: "Make room for\nwhat matters.",
+            subtitle: "A calm, beautiful place for the tasks that deserve your attention.",
+            symbol: "sparkles",
+            colors: [AuraColor.violet, AuraColor.orchid, AuraColor.coral]
         ),
         OnboardingPage(
-            imageName: "bg_onboarding_page_2",
-            title: "Achieve More",
-            subtitle: "Track your progress and hit your\ngoals."
+            eyebrow: "PLAN WITH INTENTION",
+            title: "See your time.\nProtect your energy.",
+            subtitle: "Shape today, look ahead, and keep demanding days realistic.",
+            symbol: "calendar",
+            colors: [AuraColor.violet, AuraColor.mint]
+        ),
+        OnboardingPage(
+            eyebrow: "BUILD MOMENTUM",
+            title: "Small steps.\nBeautiful progress.",
+            subtitle: "Break work down, capture quickly, and let every completion feel satisfying.",
+            symbol: "checkmark",
+            colors: [AuraColor.orchid, AuraColor.coral, AuraColor.sun]
         )
     ]
-    
-    /// The index of the currently visible onboarding page.
-    @State private var currentPage = 0
-    
-    /// A closure executed when the user completes the final step of the onboarding flow.
-    var onFinished: () -> Void
-    
+
     var body: some View {
-        VStack {
-            
-            // Paging View
-            TabView(selection: $currentPage) {
-                ForEach(0..<pages.count, id: \.self) { index in
-                    let page = pages[index]
-                    
-                    VStack(spacing: 40) {
-                        Spacer()
-                        
-                        // Image Placeholder
-                        Image(page.imageName)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 250, maxHeight: 250)
-                            // Fallback styling so you can see the layout before adding images
-                            .background(Circle().fill(Color.gray.opacity(0.1)))
-                        
-                        // Text Content
-                        VStack(spacing: 16) {
-                            Text(page.title)
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                            
-                            Text(page.subtitle)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
-                        }
-                        
-                        Spacer()
+        ZStack {
+            AuraAmbientBackground()
+
+            VStack(spacing: 0) {
+                TabView(selection: $currentPage) {
+                    ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
+                        OnboardingPageView(page: page)
+                            .tag(index)
                     }
-                    .tag(index)
                 }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: currentPage)
-            
-            // Trigger selection haptic when the user swipes between pages
-            .onChange(of: currentPage) { _ in
-                HapticManager.shared.selection()
-            }
-            
-            // Custom Page Indicator
-            HStack(spacing: 8) {
-                ForEach(0..<pages.count, id: \.self) { index in
-                    Circle()
-                        // Using the app's accent color for the active dot
-                        .fill(currentPage == index ? Color.accentColor : Color.gray.opacity(0.3))
-                        .frame(width: 8, height: 8)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .onChange(of: currentPage) { _, _ in
+                    HapticManager.shared.selection()
                 }
+
+                pageIndicator
+                continueButton
             }
-            .padding(.bottom, 32)
-            
-            // Action Button
-            Button {
-                if currentPage < pages.count - 1 {
-                    // Light impact haptic for advancing pages
-                    HapticManager.shared.impact(style: .light)
-                    withAnimation {
-                        currentPage += 1
-                    }
-                } else {
-                    // Success haptic for completing onboarding
-                    HapticManager.shared.notification(type: .success)
-                    onFinished()
-                }
-            } label: {
-                Text(currentPage == pages.count - 1 ? "Get Started" : "Next")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.accentColor)
-                    .cornerRadius(16)
-                    // Adds a subtle matching glow/shadow from your design
-                    .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
+            .padding(.bottom, AuraSpace.lg)
+        }
+    }
+
+    private var pageIndicator: some View {
+        HStack(spacing: 8) {
+            ForEach(pages.indices, id: \.self) { index in
+                Capsule()
+                    .fill(index == currentPage ? AuraColor.orchid : Color.secondary.opacity(0.22))
+                    .frame(width: index == currentPage ? 28 : 8, height: 8)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.78), value: currentPage)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
+        }
+        .padding(.bottom, AuraSpace.lg)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Page \(currentPage + 1) of \(pages.count)")
+    }
+
+    private var continueButton: some View {
+        Button(action: advance) {
+            HStack {
+                Text(currentPage == pages.count - 1 ? "Enter Aura" : "Continue")
+                Spacer()
+                Image(systemName: currentPage == pages.count - 1 ? "sparkles" : "arrow.right")
+            }
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, AuraSpace.lg)
+            .frame(height: 58)
+            .background(AuraColor.auraGradient, in: RoundedRectangle(cornerRadius: 20))
+            .shadow(color: AuraColor.orchid.opacity(0.28), radius: 20, y: 10)
+        }
+        .padding(.horizontal, AuraSpace.lg)
+    }
+
+    private func advance() {
+        if currentPage < pages.count - 1 {
+            HapticManager.shared.impact(style: .light)
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                currentPage += 1
+            }
+        } else {
+            HapticManager.shared.notification(type: .success)
+            onFinished()
         }
     }
 }
 
-#Preview {
-    OnboardingView(onFinished: {
-        print("Onboarding Complete!")
-    })
+private struct OnboardingPage {
+    let eyebrow: String
+    let title: String
+    let subtitle: String
+    let symbol: String
+    let colors: [Color]
+}
+
+private struct OnboardingPageView: View {
+    let page: OnboardingPage
+
+    var body: some View {
+        VStack(spacing: AuraSpace.xl) {
+            Spacer(minLength: 50)
+
+            hero
+
+            VStack(spacing: AuraSpace.md) {
+                Text(page.eyebrow)
+                    .font(.caption.weight(.bold))
+                    .tracking(1.5)
+                    .foregroundStyle(AuraColor.orchid)
+
+                Text(page.title)
+                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(-2)
+
+                Text(page.subtitle)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, AuraSpace.xl)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, AuraSpace.lg)
+    }
+
+    private var hero: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: page.colors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 220, height: 220)
+                .shadow(color: page.colors.first?.opacity(0.28) ?? .clear, radius: 38, y: 20)
+
+            Circle()
+                .stroke(.white.opacity(0.24), lineWidth: 1)
+                .frame(width: 176, height: 176)
+
+            Circle()
+                .fill(.white.opacity(0.16))
+                .frame(width: 118, height: 118)
+
+            Image(systemName: page.symbol)
+                .font(.system(size: 48, weight: .bold))
+                .foregroundStyle(.white)
+                .symbolEffect(.pulse)
+        }
+        .accessibilityHidden(true)
+    }
 }
