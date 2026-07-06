@@ -1,103 +1,53 @@
-# Aura 📱✨
+# Aura 2.0
 
-Aura is a premium, offline-first task management iOS application designed with a focus on fluid interactions, high-contrast typography, and uncompromising performance. 
+Aura is a calm, offline-first task manager for iPhone and iPad. Version 2.0 introduces the **Luminous Calm** design language: expressive enough to feel special, restrained enough to use every day.
 
-Built entirely from scratch using **Swift 6** and **iOS 17**, Aura demonstrates modern iOS architectural patterns, eschewing heavy third-party libraries in favor of optimized native APIs.
+## Highlights
 
-![Add task](https://github.com/user-attachments/assets/d0322c15-498d-4089-b009-413ab1507eda) ![Screen Recording 2026-03-18 at 10 27 18 AM](https://github.com/user-attachments/assets/584893a9-a6b6-4223-b56f-00d7e779a9a3) ![Screen Recording 2026-03-18 at 10 34 35 AM](https://github.com/user-attachments/assets/4fa62d7a-a150-4736-b285-aa2a3f082426)
+- Three focused destinations: **Today**, **Plan**, and **Library**
+- Animated daily progress and an overdue workflow
+- A two-week planning rail with daily workload guidance
+- Rich tasks with notes, priorities, estimates, recurrence, lists, and subtasks
+- Fast global capture with thoughtful scheduling shortcuts
+- Spaces and lists for larger areas of life
+- Search across task titles, notes, and tags
+- Recently completed history
+- Morning and evening briefing notifications
+- Siri and Shortcuts entry points for capture and navigation
+- Small and medium Home Screen widgets
+- Carefully art-directed light and dark appearances
+- Dynamic Type and VoiceOver-friendly labels on primary interactions
 
+## Architecture
 
+Aura is built entirely with Apple frameworks:
 
----
+- Swift 6 and SwiftUI
+- SwiftData for local persistence
+- Observation for app and routing state
+- App Intents for Siri and Shortcuts
+- WidgetKit for the Today widget
+- UserNotifications for reminders and optional daily briefings
 
-## ✨ Core Features
+The main app owns the SwiftData store. The widget receives only a compact progress snapshot through the `group.com.kiran.Aura` App Group; it does not open or duplicate the task database.
 
-* **Dynamic Intelligent Routing:** Tasks are automatically routed to the `Inbox`, `Today`, or `Upcoming` tabs based on their assigned `dueDate`.
-* **Interactive Bottom Sheets:** Custom-styled modal presentations featuring dynamic state validation, custom tag generation, and native interactive-dismiss protection.
-* **Granular Reminders:** Integrated `UserNotifications` framework schedules background alerts tied directly to the task's unique UUID.
-* **Fluid Gestures:** Fully supports native iOS swipe-to-delete gestures on custom-styled, floating-card UI components.
-* **Real-time Search:** A custom-built search interface that filters the database instantly while supporting interactive keyboard dismissal.
+## Requirements
 
----
+- Xcode 15 or later
+- iOS 17 or later
+- An Apple development team with the App Group capability enabled for:
+  - `com.kiran.Aura`
+  - `com.kiran.Aura.widget`
 
-## 🏗️ Technical Architecture
+## Run
 
-Aura was built to showcase clean separation of concerns and modern data handling. 
+1. Open `Aura.xcodeproj`.
+2. Select the `Aura` scheme.
+3. Confirm signing for both Aura targets.
+4. Run on an iOS 17+ simulator or device.
 
-### 1. MVVM with SwiftData
-The app utilizes the **Model-View-ViewModel (MVVM)** design pattern paired with Apple's new `SwiftData` framework. 
-* **The Brains:** ViewModels handle complex business logic (e.g., date math, sorting morning vs. afternoon tasks, calculating progress ring percentages).
-* **The Pipeline:** Views leverage the `@Query` and `#Predicate` macros to maintain a real-time, highly optimized pipeline directly to the local SQLite database, eliminating the need for manual state synchronization.
+If signing reports an App Group error, create or enable `group.com.kiran.Aura` in the Apple Developer portal and attach it to both targets.
 
-### 2. Custom UI over Native Skeletons
-Rather than fighting the framework, Aura heavily styles native SwiftUI components to achieve a custom design language:
-* Converted standard `List` components into floating card layouts using `listRowBackground(.clear)` and `listRowInsets`, preserving native `.swipeActions`.
-* Overrode default iOS 17 frosted-glass sheet materials with `.presentationBackground(.white)` for a crisp, high-contrast aesthetic.
-* Encapsulated Apple's native `DatePicker` behind custom UI pills to maintain visual consistency without sacrificing accessibility.
+## Privacy
 
-### 3. Notification Management
-A dedicated, thread-safe `@MainActor NotificationManager` singleton handles all `UNUserNotificationCenter` requests. By binding the Notification Request Identifier directly to the SwiftData `TaskItem.id`, the app completely mitigates duplicated or orphaned background alerts when tasks are edited or deleted.
-
----
-
-## 🛠️ Requirements
-
-* iOS 17.0+
-* Xcode 15.0+
-* Swift 5.9+ / Swift 6
-
----
-
-# Aura 📱✨
-
-Aura is a premium, offline-first task management iOS application designed with a focus on fluid interactions, high-contrast typography, and uncompromising performance. 
-
-Built entirely from scratch using **Swift 6** and **iOS 17**, Aura demonstrates modern iOS architectural patterns, eschewing heavy third-party libraries in favor of optimized native APIs.
-
-![Swift](https://img.shields.io/badge/Swift-6.0-F05138.svg) ![iOS](https://img.shields.io/badge/iOS-17.0+-000000.svg) ![Architecture](https://img.shields.io/badge/Architecture-MVVM-blue.svg) ![Framework](https://img.shields.io/badge/Framework-SwiftUI-blue.svg) ![Database](https://img.shields.io/badge/Database-SwiftData-orange.svg)
-
----
-
-## ✨ Core Features
-
-* **Dynamic Intelligent Routing:** Tasks are automatically routed to the `Inbox`, `Today`, or `Upcoming` tabs based on their assigned `dueDate`.
-* **Interactive Bottom Sheets:** Custom-styled modal presentations featuring dynamic state validation, custom tag generation, and native interactive-dismiss protection.
-* **Granular Reminders:** Integrated `UserNotifications` framework schedules background alerts tied directly to the task's unique UUID.
-* **Fluid Gestures:** Fully supports native iOS swipe-to-delete gestures on custom-styled, floating-card UI components.
-* **Real-time Search:** A custom-built search interface that filters the database instantly while supporting interactive keyboard dismissal.
-
----
-
-## 🏗️ Technical Architecture
-
-Aura was built to showcase clean separation of concerns and modern data handling. 
-
-### 1. MVVM with SwiftData
-The app utilizes the **Model-View-ViewModel (MVVM)** design pattern paired with Apple's new `SwiftData` framework. 
-* **The Brains:** ViewModels handle complex business logic (e.g., date math, sorting morning vs. afternoon tasks, calculating progress ring percentages).
-* **The Pipeline:** Views leverage the `@Query` and `#Predicate` macros to maintain a real-time, highly optimized pipeline directly to the local SQLite database, eliminating the need for manual state synchronization.
-
-### 2. Custom UI over Native Skeletons
-Rather than fighting the framework, Aura heavily styles native SwiftUI components to achieve a custom design language:
-* Converted standard `List` components into floating card layouts using `listRowBackground(.clear)` and `listRowInsets`, preserving native `.swipeActions`.
-* Overrode default iOS 17 frosted-glass sheet materials with `.presentationBackground(.white)` for a crisp, high-contrast aesthetic.
-* Encapsulated Apple's native `DatePicker` behind custom UI pills to maintain visual consistency without sacrificing accessibility.
-
-### 3. Notification Management
-A dedicated, thread-safe `@MainActor NotificationManager` singleton handles all `UNUserNotificationCenter` requests. By binding the Notification Request Identifier directly to the SwiftData `TaskItem.id`, the app completely mitigates duplicated or orphaned background alerts when tasks are edited or deleted.
-
----
-
-## 🛠️ Requirements
-
-* iOS 17.0+
-* Xcode 15.0+
-* Swift 5.9+ / Swift 6
-
----
-
-## 🚀 Installation & Setup
-
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/k1rank94/Aura.git](https://github.com/k1rank94/Aura.git)
+Aura contains no analytics, advertising SDKs, accounts, or third-party dependencies. Tasks stay in the local SwiftData store. See [PRIVACY.md](PRIVACY.md).

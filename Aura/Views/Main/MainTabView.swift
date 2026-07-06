@@ -14,149 +14,149 @@ import SwiftData
 /// five distinct sub-views (Inbox, Today, Upcoming, Search, and Settings) while providing a persistent,
 /// global Floating Action Button (FAB) that allows users to create new tasks from any context.
 struct MainTabView: View {
-    
-    // MARK: - Environment & State
-    
-    /// The SwiftData model context used to persist newly created tasks.
     @Environment(\.modelContext) private var context
-    
-    /// The currently selected tab index. Defaults to the 'Today' view (index 1).
-    @State private var selectedTab = 1
-    
-    /// A boolean flag determining whether the global task creation sheet is currently visible.
-    @State private var isShowingAddTask = false
-    
-    // The version the user last launched. Defaults to empty so fresh installs see it immediately.
+    @Query private var allTasks: [TaskItem]
+    @State private var router = AuraRouter()
+    @State private var intentRouter = AuraIntentRouter.shared
+    @State private var quickCapturePrefill = ""
     @AppStorage("lastLaunchedVersion") private var lastLaunchedVersion: String = ""
-    
-    // Controls the presentation of the What's New sheet
     @State private var isShowingWhatsNew = false
-    
-    // Extract the current app version directly from Xcode's Build settings
     private let currentAppVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-    
-    // MARK: - User Preferences
-    
-    /// Tracks whether the morning briefing is enabled. Defaults to `true`.
-    /// Reading this here ensures the app can apply the user's preference (or the default value on first launch)
-    /// to the notification system as soon as the main interface loads.
-    @AppStorage("isMorningBriefingEnabled") private var isMorningBriefingEnabled = true
-    
-    /// Tracks whether the evening briefing is enabled. Defaults to `true`.
-    /// Shares the exact same underlying `UserDefaults` key as the toggle in `SettingsView`.
-    @AppStorage("isEveningBriefingEnabled") private var isEveningBriefingEnabled = true
-    
-    // MARK: - Body
-    
+    @AppStorage("isMorningBriefingEnabled") private var isMorningBriefingEnabled = false
+    @AppStorage("isEveningBriefingEnabled") private var isEveningBriefingEnabled = false
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            
-            // 1. The Main Navigation Tabs
-            TabView(selection: $selectedTab) {
-                
-                InboxView()
-                    .tabItem {
-                        Label("Inbox", systemImage: "tray")
-                    }
-                    .tag(0)
-                
-                TodayView()
-                    .tabItem {
-                        Label("Today", systemImage: "calendar")
-                    }
-                    .tag(1)
-                
-                UpcomingView()
-                    .tabItem {
-                        Label("Upcoming", systemImage: "tray.and.arrow.down")
-                    }
-                    .tag(2)
-                
-                SpacesView()
-                    .tabItem {
-                        Label("Spaces", systemImage: "folder")
-                    }
-                    .tag(3)
+            AuraAmbientBackground()
 
-                SearchView()
+            TabView(selection: $router.selectedTab) {
+                NavigationStack {
+                    TodayView()
+                }
                     .tabItem {
-                        Label("Search", systemImage: "magnifyingglass")
+                        Label(AuraTab.today.title, systemImage: AuraTab.today.symbol)
                     }
-                    .tag(4)
-                
-                // NEW: The Settings Router
-                SettingsView()
+                    .tag(AuraTab.today)
+
+                NavigationStack {
+                    PlanView()
+                }
                     .tabItem {
-                        Label("Settings", systemImage: "gearshape")
+                        Label(AuraTab.plan.title, systemImage: AuraTab.plan.symbol)
                     }
-                    .tag(5)
+                    .tag(AuraTab.plan)
+
+                NavigationStack {
+                    LibraryView()
+                }
+                    .tabItem {
+                        Label(AuraTab.library.title, systemImage: AuraTab.library.symbol)
+                    }
+                    .tag(AuraTab.library)
             }
-            .tint(.pink)
-            
-            // 2. The Floating Action Button (FAB)
-            Button(action: {
-                // Trigger tactile feedback on FAB interaction
-                HapticManager.shared.impact(style: .light)
-                isShowingAddTask = true
-            }) {
+            .tint(AuraColor.orchid)
+
+            Button(action: showQuickCapture) {
                 Image(systemName: "plus")
-                    .font(.title2.weight(.semibold))
+                    .font(.title3.weight(.bold))
                     .foregroundColor(.white)
-                    .frame(width: 60, height: 60)
-                    .background(Color.pink)
-                    .clipShape(Circle())
-                    .shadow(color: .pink.opacity(0.3), radius: 10, x: 0, y: 5)
+                    .frame(width: 58, height: 58)
+                    .background(AuraColor.auraGradient, in: Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                    .shadow(color: AuraColor.orchid.opacity(0.38), radius: 18, y: 9)
             }
-            .padding(.trailing, 20)
-            .padding(.bottom, 80)
+            .accessibilityLabel("Create a task")
+            .padding(.trailing, AuraSpace.lg)
+            .padding(.bottom, 76)
         }
         .onAppear {
-            // Synchronize the NotificationManager with the user's stored preferences upon app launch.
-            // This is crucial for the very first time the user opens the app, as the default `true`
-            // values from `@AppStorage` need to be explicitly passed to the notification engine
-            // to schedule the briefings.
             NotificationManager.shared.updateMorningBriefing(isEnabled: isMorningBriefingEnabled)
             NotificationManager.shared.updateEveningBriefing(isEnabled: isEveningBriefingEnabled)
-            
+
             if lastLaunchedVersion != currentAppVersion {
-                // Add a tiny delay so the UI finishes loading before popping the modal
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     isShowingWhatsNew = true
                 }
             }
+
+            handleIntent()
+            AuraWidgetSnapshotStore.save(tasks: allTasks)
         }
-        
-        // 3. The Global Creation Sheet
-        .sheet(isPresented: $isShowingAddTask) {
-            // Explicitly pass nil to trigger "Create" mode rather than "Edit" mode
-            AddTaskSheet(task: nil) { newTask in
-                if let taskToSave = newTask {
-                    // Save to the local SQLite database
-                    context.insert(taskToSave)
-                    
-                    // Schedule a precise local notification for the newly saved task
-                    NotificationManager.shared.scheduleNotification(for: taskToSave)
-                    
-                    // Trigger a success haptic to confirm creation to the user
-                    HapticManager.shared.notification(type: .success)
-                }
-            }
-            .presentationDetents([.height(350)])
-            .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(32)
+        .onChange(of: widgetFingerprint) { _, _ in
+            AuraWidgetSnapshotStore.save(tasks: allTasks)
         }
-        
-        // What's New Presentation
+        .onChange(of: intentRouter.pendingAction) { _, _ in
+            handleIntent()
+        }
+        .sheet(item: $router.presentedSheet) { sheet in
+            sheetContent(for: sheet)
+        }
         .sheet(isPresented: $isShowingWhatsNew, onDismiss: {
-            // Once they dismiss it, save the new version so they don't see it again until the next update!
             lastLaunchedVersion = currentAppVersion
         }) {
             WhatsNewView(items: [
-                WhatsNewItem(icon: "moon.stars.fill", title: "Dark Mode", description: "Aura now beautifully adapts to your system's dark mode settings for late-night planning.", color: .indigo),
-                WhatsNewItem(icon: "repeat", title: "Recurring Tasks", description: "Automate your workflow. Set tasks to repeat daily, weekly, or monthly.", color: .pink),
-                WhatsNewItem(icon: "bell.badge.fill", title: "Daily Nudges", description: "Start your morning right and wind down easily with automated daily briefing notifications.", color: .orange)
+                WhatsNewItem(icon: "sparkles", title: "Luminous Calm", description: "A completely reimagined experience built around focus, clarity, and beautiful motion.", color: AuraColor.orchid),
+                WhatsNewItem(icon: "calendar", title: "Plan Your Week", description: "Move naturally from today's focus into a thoughtful weekly plan.", color: AuraColor.violet),
+                WhatsNewItem(icon: "checklist", title: "Richer Tasks", description: "Add notes, effort estimates, subtasks, priorities, and recurring schedules.", color: AuraColor.mint)
             ])
         }
+        .environment(router)
+    }
+
+    @ViewBuilder
+    private func sheetContent(for sheet: AuraSheet) -> some View {
+        switch sheet {
+        case .quickCapture:
+            AddTaskSheet(task: nil, initialTitle: quickCapturePrefill) { newTask in
+                guard let newTask else { return }
+                context.insert(newTask)
+                NotificationManager.shared.scheduleNotification(for: newTask)
+                HapticManager.shared.notification(type: .success)
+                quickCapturePrefill = ""
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(32)
+
+        case .editTask(let task):
+            TaskDetailView(task: task)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(32)
+
+        case .settings:
+            NavigationStack {
+                SettingsView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(32)
+        }
+    }
+
+    private func showQuickCapture() {
+        HapticManager.shared.impact(style: .light)
+        router.showQuickCapture()
+    }
+
+    private func handleIntent() {
+        guard let action = intentRouter.pendingAction else { return }
+        switch action {
+        case .open(let tab):
+            router.selectedTab = tab
+        case .quickCapture(let prefill):
+            quickCapturePrefill = prefill
+            router.showQuickCapture()
+        }
+        intentRouter.pendingAction = nil
+    }
+
+    private var widgetFingerprint: String {
+        allTasks
+            .map {
+                "\($0.id.uuidString):\($0.isCompleted):\($0.dueDate?.timeIntervalSince1970 ?? 0):\($0.title)"
+            }
+            .joined(separator: "|")
     }
 }
 

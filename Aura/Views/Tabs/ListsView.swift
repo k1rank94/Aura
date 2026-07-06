@@ -2,73 +2,111 @@
 //  ListsView.swift
 //  Aura
 //
-//  Created by Jules.
-//
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ListsView: View {
     @Environment(\.modelContext) private var context
-    var space: TaskSpace
+    let space: TaskSpace
 
-    @State private var showingAddList = false
+    @State private var isAddingList = false
     @State private var newListTitle = ""
 
+    private var lists: [TaskList] {
+        space.lists.sorted { $0.createdAt < $1.createdAt }
+    }
+
     var body: some View {
-        List {
-            ForEach(space.lists.sorted(by: { $0.createdAt < $1.createdAt })) { list in
-                NavigationLink(destination: TasksListView(list: list)) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(list.title)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Text("\(list.tasks.count) tasks")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        ZStack {
+            AuraAmbientBackground()
+
+            ScrollView {
+                LazyVStack(spacing: AuraSpace.sm) {
+                    AuraSectionHeading(space.title, eyebrow: "Space", trailing: "\(lists.count) lists")
+
+                    if lists.isEmpty {
+                        AuraEmptyState(
+                            icon: "list.bullet.rectangle",
+                            title: "A fresh space",
+                            message: "Add a list for a project, routine, or part of your life."
+                        )
+                    } else {
+                        ForEach(lists) { list in
+                            NavigationLink {
+                                TasksListView(list: list)
+                            } label: {
+                                ListRow(list: list)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    context.delete(list)
+                                }
+                            }
                         }
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 16)
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(16)
-                }
-                .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        withAnimation {
-                            context.delete(list)
-                        }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
                     }
                 }
+                .padding(AuraSpace.lg)
             }
         }
-        .listStyle(.plain)
-        .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle(space.title)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingAddList = true }) {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isAddingList = true
+                } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-        .alert("New List", isPresented: $showingAddList) {
-            TextField("List Name", text: $newListTitle)
+        .tint(AuraColor.orchid)
+        .alert("New list", isPresented: $isAddingList) {
+            TextField("List name", text: $newListTitle)
             Button("Cancel", role: .cancel) { newListTitle = "" }
-            Button("Add") {
-                let list = TaskList(title: newListTitle, space: space)
-                context.insert(list)
-                newListTitle = ""
-            }
-        } message: {
-            Text("Enter a name for the new list.")
+            Button("Create", action: createList)
+                .disabled(newListTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+    }
+
+    private func createList() {
+        let title = newListTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        let list = TaskList(title: title, space: space)
+        context.insert(list)
+        space.lists.append(list)
+        newListTitle = ""
+        HapticManager.shared.notification(type: .success)
+    }
+}
+
+private struct ListRow: View {
+    let list: TaskList
+
+    var body: some View {
+        HStack(spacing: AuraSpace.md) {
+            Image(systemName: "list.bullet")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AuraColor.violet)
+                .frame(width: 48, height: 48)
+                .background(AuraColor.violet.opacity(0.11), in: RoundedRectangle(cornerRadius: 15))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(list.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("\(list.tasks.filter { !$0.isCompleted }.count) open · \(list.tasks.filter(\.isCompleted).count) done")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding(AuraSpace.md)
+        .auraCard(cornerRadius: 20)
     }
 }

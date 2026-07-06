@@ -36,67 +36,75 @@ struct WhatsNewView: View {
     let items: [WhatsNewItem]
     
     var body: some View {
-        VStack(alignment: .center, spacing: 32) {
-            
-            // Header
-            VStack(spacing: 8) {
-                Text("What's New in")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Text("Aura")
-                    .font(.largeTitle)
-                    .fontWeight(.black)
-                    .foregroundColor(.pink)
-            }
-            .padding(.top, 40)
-            
-            // Feature List
-            VStack(alignment: .leading, spacing: 28) {
-                ForEach(items) { item in
-                    HStack(spacing: 16) {
-                        Image(systemName: item.icon)
-                            .font(.system(size: 32, weight: .regular))
-                            .foregroundColor(item.color)
-                            .frame(width: 40)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            
-                            Text(item.description)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                // Ensures long descriptions wrap nicely
-                                .fixedSize(horizontal: false, vertical: true) 
+        ZStack {
+            AuraAmbientBackground()
+
+            VStack(alignment: .center, spacing: AuraSpace.xl) {
+                VStack(spacing: AuraSpace.sm) {
+                    Image(systemName: "sparkles")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 64, height: 64)
+                        .background(AuraColor.auraGradient, in: Circle())
+                        .shadow(color: AuraColor.orchid.opacity(0.28), radius: 20, y: 10)
+
+                    Text("Aura, reimagined")
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+
+                    Text("A calmer, richer way to shape your days.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, AuraSpace.xl)
+
+                VStack(alignment: .leading, spacing: AuraSpace.sm) {
+                    ForEach(items) { item in
+                        HStack(spacing: AuraSpace.md) {
+                            Image(systemName: item.icon)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(item.color)
+                                .frame(width: 46, height: 46)
+                                .background(item.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+
+                                Text(item.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
+                        .padding(AuraSpace.md)
+                        .auraCard(cornerRadius: 20)
                     }
                 }
-            }
-            .padding(.horizontal, 24)
-            
-            Spacer()
-            
-            // Continue Button
-            Button(action: {
-                HapticManager.shared.impact(style: .medium)
-                dismiss()
-            }) {
-                Text("Continue")
+
+                Spacer()
+
+                Button(action: continueToApp) {
+                    HStack {
+                        Text("Enter Aura")
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
                     .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.pink)
-                    .cornerRadius(16)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, AuraSpace.lg)
+                    .frame(height: 56)
+                    .background(AuraColor.auraGradient, in: RoundedRectangle(cornerRadius: 19))
+                }
+                .padding(.bottom, AuraSpace.lg)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 40)
+            .padding(.horizontal, AuraSpace.lg)
         }
-        .presentationBackground(Color(UIColor.systemBackground))
-        .interactiveDismissDisabled() // Forces the user to tap "Continue" to acknowledge
+        .interactiveDismissDisabled()
+    }
+
+    private func continueToApp() {
+        HapticManager.shared.impact(style: .medium)
+        dismiss()
     }
 }
 

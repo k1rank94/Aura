@@ -2,232 +2,322 @@
 //  AddTaskSheet.swift
 //  Aura
 //
-//  Created by Kiran on 16/03/26.
-//
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct AddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var viewModel: AddTaskViewModel
-    
-    @Environment(\.modelContext) private var context
-    @Query(sort: \TaskList.title, order: .forward) private var allLists: [TaskList]
+    @Query(sort: \TaskList.title) private var allLists: [TaskList]
 
-    @State private var showingCustomTagAlert = false
-    @State private var customTagText = ""
-    
-    var onSave: (TaskItem?) -> Void
-    let availableTags = ["Work", "Personal", "Health", "Urgent"]
-    
-    init(task: TaskItem? = nil, onSave: @escaping (TaskItem?) -> Void) {
-        self._viewModel = State(initialValue: AddTaskViewModel(task: task))
+    @State private var viewModel: AddTaskViewModel
+    @State private var isShowingSchedule = false
+    @FocusState private var focusedField: Field?
+
+    let onSave: (TaskItem?) -> Void
+
+    private enum Field {
+        case title
+        case notes
+    }
+
+    init(
+        task: TaskItem? = nil,
+        initialTitle: String = "",
+        onSave: @escaping (TaskItem?) -> Void
+    ) {
+        _viewModel = State(initialValue: AddTaskViewModel(task: task, initialTitle: initialTitle))
+        _isShowingSchedule = State(initialValue: task?.dueDate != nil)
         self.onSave = onSave
     }
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            
+        NavigationStack {
             ZStack {
-                HStack {
-                    Spacer()
-                    Capsule()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 40, height: 4)
-                    Spacer()
-                }
-                
-                HStack {
-                    Spacer()
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray.opacity(0.4))
-                            .font(.title2)
+                AuraAmbientBackground()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: AuraSpace.lg) {
+                        titleEditor
+                        notesEditor
+                        quickSchedule
+
+                        if isShowingSchedule {
+                            scheduleEditor
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+
+                        metadataGrid
                     }
+                    .padding(.horizontal, AuraSpace.lg)
+                    .padding(.top, AuraSpace.md)
+                    .padding(.bottom, 120)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
-            .padding(.top, 12)
-            
-            TextField("What needs to be done?", text: $viewModel.title)
-                .font(.system(size: 24, weight: .semibold, design: .default))
-                .foregroundColor(.primary)
-                .submitLabel(.done)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    
-                    datePickerPill
-                    
-                    Menu {
-                        Button("None") { viewModel.recurrence = nil }
-                        
-                        Divider()
-                        
-                        ForEach(RecurrenceRule.allCases, id: \.self) { rule in
-                            Button(rule.rawValue) { viewModel.recurrence = rule }
-                        }
-                    } label: {
-                        actionPill(
-                            icon: "repeat",
-                            title: viewModel.recurrence?.rawValue ?? "Repeat",
-                            isActive: viewModel.recurrence != nil
-                        )
-                    }
-                    
-                    Menu {
-                        Button("Inbox (No List)") { viewModel.list = nil }
+            .navigationTitle(viewModel.taskToEdit == nil ? "New task" : "Edit task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: dismiss.callAsFunction)
+                }
 
-                        Divider()
-
-                        ForEach(allLists) { list in
-                            Button(list.title) { viewModel.list = list }
-                        }
-                    } label: {
-                        actionPill(
-                            icon: "list.bullet",
-                            title: viewModel.list?.title ?? "List",
-                            isActive: viewModel.list != nil
-                        )
-                    }
-
-                    Menu {
-                        ForEach(availableTags, id: \.self) { tag in
-                            Button(tag) { viewModel.tag = tag }
-                        }
-                        
-                        Divider()
-                        
-                        Button("Custom Tag...") {
-                            showingCustomTagAlert = true
-                        }
-                        
-                        if viewModel.tag != nil {
-                            Button("Clear Tag", role: .destructive) { viewModel.tag = nil }
-                        }
-                    } label: {
-                        actionPill(
-                            icon: "tag",
-                            title: viewModel.tag ?? "Add Tag",
-                            isActive: viewModel.tag != nil
-                        )
-                    }
-                    
-                    Menu {
-                        Picker("Priority", selection: $viewModel.priority) {
-                            Text("Low").tag(Priority.low)
-                            Text("Medium").tag(Priority.medium)
-                            Text("High").tag(Priority.high)
-                        }
-                    } label: {
-                        actionPill(
-                            icon: "flag",
-                            title: priorityString(for: viewModel.priority),
-                            isActive: viewModel.priority != .low,
-                            dotColor: priorityColor(for: viewModel.priority)
-                        )
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(viewModel.taskToEdit == nil ? "Create" : "Save", action: save)
+                        .fontWeight(.bold)
+                        .disabled(!viewModel.isValid)
                 }
             }
-            
-            Spacer()
-            
-            Button(action: {
-                let newTaskOrNil = viewModel.save()
-                onSave(newTaskOrNil)
-                dismiss()
-            }) {
-                Text(viewModel.taskToEdit == nil ? "Save Task" : "Update Task")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(viewModel.isValid ? Color.pink : Color.pink.opacity(0.5))
-                    .cornerRadius(16)
-            }
-            .disabled(!viewModel.isValid)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 32)
-        .interactiveDismissDisabled(!viewModel.title.isEmpty)
-        // DARK MODE FIX: Use systemBackground instead of hardcoded white
-        .presentationBackground(Color(UIColor.systemBackground))
-        
-        .alert("New Tag", isPresented: $showingCustomTagAlert) {
-            TextField("e.g. Finance, Groceries", text: $customTagText)
-            
-            Button("Add") {
-                let trimmed = customTagText.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty {
-                    viewModel.tag = trimmed
-                }
-                customTagText = ""
-            }
-            
-            Button("Cancel", role: .cancel) {
-                customTagText = ""
-            }
+        .tint(AuraColor.orchid)
+        .interactiveDismissDisabled(!viewModel.title.isEmpty || !viewModel.notes.isEmpty)
+        .onAppear {
+            focusedField = .title
         }
     }
-    
-    private var datePickerPill: some View {
-        ZStack {
-            if let date = viewModel.dueDate {
-                DatePicker("", selection: Binding(
-                    get: { date },
-                    set: { viewModel.dueDate = $0 }
-                ), displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden()
-                .tint(.pink)
-            } else {
-                Button(action: {
-                    viewModel.dueDate = Date()
-                }) {
-                    actionPill(icon: "calendar", title: "Set Date", isActive: false)
+
+    private var titleEditor: some View {
+        VStack(alignment: .leading, spacing: AuraSpace.sm) {
+            Text("What deserves your attention?")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AuraColor.orchid)
+                .textCase(.uppercase)
+                .tracking(1.1)
+
+            TextField("Name this task", text: $viewModel.title, axis: .vertical)
+                .font(.system(size: 29, weight: .bold, design: .rounded))
+                .lineLimit(1...3)
+                .focused($focusedField, equals: .title)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .notes }
+        }
+    }
+
+    private var notesEditor: some View {
+        VStack(alignment: .leading, spacing: AuraSpace.sm) {
+            Label("Notes", systemImage: "text.alignleft")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField("Add context, links, or a tiny first step…", text: $viewModel.notes, axis: .vertical)
+                .lineLimit(2...6)
+                .focused($focusedField, equals: .notes)
+                .padding(AuraSpace.md)
+                .auraCard(cornerRadius: 18)
+        }
+    }
+
+    private var quickSchedule: some View {
+        VStack(alignment: .leading, spacing: AuraSpace.sm) {
+            Text("When")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: AuraSpace.sm) {
+                scheduleButton("Today", icon: "sun.max.fill", date: .now)
+                scheduleButton("Tomorrow", icon: "sunrise.fill", date: tomorrow)
+
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        if viewModel.dueDate == nil {
+                            viewModel.dueDate = .now
+                        }
+                        isShowingSchedule.toggle()
+                    }
+                } label: {
+                    Label("Pick", systemImage: "calendar")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(AuraPillButtonStyle(isSelected: isShowingSchedule))
+            }
+
+            if viewModel.dueDate != nil {
+                Button(role: .destructive) {
+                    withAnimation {
+                        viewModel.dueDate = nil
+                        isShowingSchedule = false
+                    }
+                } label: {
+                    Label("Move to Inbox", systemImage: "tray")
+                        .font(.caption.weight(.semibold))
                 }
             }
         }
     }
-    
-    private func actionPill(icon: String, title: String, isActive: Bool, dotColor: Color? = nil) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.subheadline)
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-            
-            if let dotColor = dotColor {
-                Circle()
-                    .fill(dotColor)
-                    .frame(width: 8, height: 8)
-            }
-        }
-        // DARK MODE FIX: Adaptive unselected text color instead of hardcoded dark grey
-        .foregroundColor(isActive ? .pink : .primary)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isActive ? Color.pink.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 1)
-                .background(isActive ? Color.pink.opacity(0.05) : Color.clear)
+
+    private var scheduleEditor: some View {
+        DatePicker(
+            "Date and time",
+            selection: Binding(
+                get: { viewModel.dueDate ?? .now },
+                set: { viewModel.dueDate = $0 }
+            ),
+            displayedComponents: [.date, .hourAndMinute]
         )
+        .datePickerStyle(.graphical)
+        .padding(AuraSpace.md)
+        .auraCard()
     }
-    
-    private func priorityString(for priority: Priority) -> String {
-        switch priority {
-        case .low: return "Low"
-        case .medium: return "Medium"
-        case .high: return "High"
+
+    private var metadataGrid: some View {
+        VStack(spacing: AuraSpace.sm) {
+            AuraMenuRow(
+                icon: "flag.fill",
+                title: "Priority",
+                value: priorityTitle,
+                tint: priorityColor
+            ) {
+                Picker("Priority", selection: $viewModel.priority) {
+                    Text("Low").tag(Priority.low)
+                    Text("Medium").tag(Priority.medium)
+                    Text("High").tag(Priority.high)
+                }
+            }
+
+            AuraMenuRow(
+                icon: "repeat",
+                title: "Repeat",
+                value: viewModel.recurrence?.rawValue ?? "Never",
+                tint: AuraColor.violet
+            ) {
+                Button("Never") { viewModel.recurrence = nil }
+                ForEach(RecurrenceRule.allCases, id: \.self) { rule in
+                    Button(rule.rawValue) { viewModel.recurrence = rule }
+                }
+            }
+
+            AuraMenuRow(
+                icon: "hourglass",
+                title: "Effort",
+                value: effortTitle,
+                tint: AuraColor.sun
+            ) {
+                Button("No estimate") { viewModel.estimatedMinutes = nil }
+                ForEach([15, 30, 45, 60, 90], id: \.self) { minutes in
+                    Button(minutes < 60 ? "\(minutes) minutes" : "\(minutes / 60)h \(minutes % 60 == 0 ? "" : "30m")") {
+                        viewModel.estimatedMinutes = minutes
+                    }
+                }
+            }
+
+            AuraMenuRow(
+                icon: "list.bullet",
+                title: "List",
+                value: viewModel.list?.title ?? "Inbox",
+                tint: AuraColor.mint
+            ) {
+                Button("Inbox") { viewModel.list = nil }
+                ForEach(allLists) { list in
+                    Button(list.title) { viewModel.list = list }
+                }
+            }
         }
     }
-    
-    private func priorityColor(for priority: Priority) -> Color {
-        switch priority {
-        case .low: return .blue
-        case .medium: return .yellow
-        case .high: return .red
+
+    private var tomorrow: Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now
+    }
+
+    private var priorityTitle: String {
+        switch viewModel.priority {
+        case .low: "Low"
+        case .medium: "Medium"
+        case .high: "High"
         }
+    }
+
+    private var priorityColor: Color {
+        switch viewModel.priority {
+        case .low: AuraColor.violet
+        case .medium: AuraColor.sun
+        case .high: AuraColor.coral
+        }
+    }
+
+    private var effortTitle: String {
+        guard let minutes = viewModel.estimatedMinutes else { return "None" }
+        return minutes < 60 ? "\(minutes) min" : "\(minutes / 60) hr"
+    }
+
+    private func scheduleButton(_ title: String, icon: String, date: Date) -> some View {
+        let selected = viewModel.dueDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false
+
+        return Button {
+            let currentTime = viewModel.dueDate ?? date
+            let time = Calendar.current.dateComponents([.hour, .minute], from: currentTime)
+            viewModel.dueDate = Calendar.current.date(
+                bySettingHour: time.hour ?? 9,
+                minute: time.minute ?? 0,
+                second: 0,
+                of: date
+            )
+            isShowingSchedule = false
+        } label: {
+            Label(title, systemImage: icon)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(AuraPillButtonStyle(isSelected: selected))
+    }
+
+    private func save() {
+        onSave(viewModel.save())
+        dismiss()
+    }
+}
+
+private struct AuraMenuRow<MenuContent: View>: View {
+    let icon: String
+    let title: String
+    let value: String
+    let tint: Color
+    @ViewBuilder let menuContent: () -> MenuContent
+
+    var body: some View {
+        Menu {
+            menuContent()
+        } label: {
+            HStack(spacing: AuraSpace.md) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 36, height: 36)
+                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 11))
+
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text(value)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(AuraSpace.md)
+            .auraCard(cornerRadius: 18)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct AuraPillButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.caption.weight(.bold))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(
+                isSelected ? AnyShapeStyle(AuraColor.auraGradient) : AnyShapeStyle(.thinMaterial),
+                in: Capsule()
+            )
+            .overlay(Capsule().stroke(.white.opacity(isSelected ? 0.25 : 0.5), lineWidth: 1))
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
     }
 }

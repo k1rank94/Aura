@@ -76,6 +76,22 @@ final class TaskItem {
     /// An optional list this task belongs to.
     var list: TaskList?
 
+    /// Longer-form context that does not compete with the task title in list views.
+    var notes: String = ""
+
+    /// Optional effort estimate used by planning and focus surfaces.
+    var estimatedMinutes: Int?
+
+    /// A stable user-controlled order for tasks inside the same day or list.
+    var sortOrder: Double = 0
+
+    /// The completion timestamp powers history and daily accomplishment summaries.
+    var completedAt: Date?
+
+    /// Small, independently completable steps belonging to this task.
+    @Relationship(deleteRule: .cascade, inverse: \TaskSubtask.task)
+    var subtasks: [TaskSubtask] = []
+
     /// Initializes a new task with the provided configuration.
     init(
         id: UUID = UUID(),
@@ -86,7 +102,11 @@ final class TaskItem {
         createdAt: Date = .now,
         tag: String? = nil,
         recurrence: RecurrenceRule? = nil, // Added to initializer safely
-        list: TaskList? = nil
+        list: TaskList? = nil,
+        notes: String = "",
+        estimatedMinutes: Int? = nil,
+        sortOrder: Double = 0,
+        completedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -97,5 +117,9 @@ final class TaskItem {
         self.tag = tag
         self.recurrence = recurrence
         self.list = list
+        self.notes = notes
+        self.estimatedMinutes = estimatedMinutes
+        self.sortOrder = sortOrder
+        self.completedAt = completedAt
     }
 }

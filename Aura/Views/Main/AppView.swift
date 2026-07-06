@@ -32,11 +32,12 @@ struct AppView: View {
             }
         )
         // Inject the SwiftData model container into the environment
-        .modelContainer(for: TaskItem.self)
-        .onAppear {
-            // Prompt the user for notification permissions on app launch
-            NotificationManager.shared.requestAuthorization()
-        }
+        .modelContainer(for: [
+            TaskItem.self,
+            TaskSubtask.self,
+            TaskList.self,
+            TaskSpace.self
+        ])
     }
 }
 
@@ -47,4 +48,3 @@ struct AppView: View {
 #Preview("Onboarding Completed") {
     AppView(appState: AppState(isUserOnboardingCompleted: true))
 }
-

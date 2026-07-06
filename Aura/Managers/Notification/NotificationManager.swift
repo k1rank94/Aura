@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// A singleton manager responsible for handling all local system notifications.
 ///
@@ -45,21 +45,55 @@ class NotificationManager {
     ///
     /// - Parameter task: The `TaskItem` to schedule. Uses the task's unique `id` to prevent duplication.
     func scheduleNotification(for task: TaskItem) {
-        // Ensure the task has a future due date and isn't already checked off
         guard let dueDate = task.dueDate, !task.isCompleted, dueDate > Date() else { return }
-        
+
+        let identifier = task.id.uuidString
+        let title = task.title
+        let center = UNUserNotificationCenter.current()
+
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                Self.submitTaskNotification(
+                    identifier: identifier,
+                    title: title,
+                    dueDate: dueDate
+                )
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                    if let error {
+                        print("Notification permission error: \(error.localizedDescription)")
+                    }
+                    guard granted else { return }
+                    Self.submitTaskNotification(
+                        identifier: identifier,
+                        title: title,
+                        dueDate: dueDate
+                    )
+                }
+            case .denied:
+                break
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    nonisolated private static func submitTaskNotification(
+        identifier: String,
+        title: String,
+        dueDate: Date
+    ) {
         let content = UNMutableNotificationContent()
-        content.title = "Task Reminder"
-        content.body = task.title
+        content.title = "A gentle reminder"
+        content.body = title
         content.sound = .default
-        
-        // Extract the exact minute/hour/day components from the task's due date
+
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        
-        // Bind the notification request to the TaskItem's stable identifier
-        let request = UNNotificationRequest(identifier: task.id.uuidString, content: content, trigger: trigger)
-        
+
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("Error scheduling notification: \(error.localizedDescription)")
